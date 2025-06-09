@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <title>BRA Postal Finder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+
+</head>
+<<body data-theme="light">>
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <button id="langToggle" class="btn btn-outline-secondary">🌐 Português</button>
+      <button id="themeToggle" class="btn btn-outline-dark" data-i18n="dark_mode"> Dark Mode</button>
+    </div>
+
+    <h1 class="mb-2 text-primary text-center" data-i18n="title">🇧🇷 Brazilian Address Finder</h1>
+    <p class="text-center mb-4" data-i18n="desc">Enter a Brazilian postal code (CEP) or an address to find information.</p>
+
+    <div class="mb-4">
+      <h5 data-i18n="video_tutorial">📺 How to search:</h5>
+      <iframe src="https://www.youtube.com/embed/fakeTutorialVideo" allowfullscreen></iframe>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title" data-i18n="label_cep">Postal code (CEP):</h5>
+        <div class="input-group mb-3">
+          <input type="text" id="cep" class="form-control" placeholder="e.g. 01001-000">
+          <button class="btn btn-primary" onclick="buscarEndereco()" data-i18n="btn_cep">Find Address</button>
+        </div>
+        <div id="cepResult" class="mt-2"></div>
+        <div id="map" class="mt-3"></div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title" data-i18n="result_cep_title">Postal codes found</h5>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="ufSelect" class="form-label" data-i18n="label_uf">State (UF):</label>
+            <select id="ufSelect" class="form-select"></select>
+          </div>
+          <div class="col-md-4">
+            <label for="citySelect" class="form-label" data-i18n="label_city">City:</label>
+            <select id="citySelect" class="form-select"></select>
+          </div>
+          <div class="col-md-4">
+            <label for="street" class="form-label" data-i18n="label_street">Street / Rua:</label>
+            <input type="text" id="street" class="form-control" placeholder="Praça da Sé">
+          </div>
+        </div>
+        <button class="btn btn-success mt-3" onclick="buscarCEPs()" data-i18n="btn_addr">Find Postal Codes</button>
+        <div id="addressResult" class="mt-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const mapDiv = document.getElementById('map');
+    function showMapByAddress(address) {
+      const url = `https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
+      mapDiv.innerHTML = `<iframe src="${url}" width="100%" height="100%" style="border:0;"></iframe>`;
+    }
+
+    function buscarEndereco() {
+      const cep = document.getElementById("cep").value.replace(/\D/g, "");
+      const resultDiv = document.getElementById("cepResult");
+      resultDiv.innerHTML = "";
+      mapDiv.innerHTML = "";
+
+      if (cep.length !== 8) {
+        resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="invalid_cep">Invalid CEP.</div>`;
+        return;
+      }
+
+      fetch(`https://viacep.com.br/ws/${cep}/json/`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.erro) {
+            resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="not_found_cep">Postal code not found.</div>`;
+          } else {
+            resultDiv.innerHTML = `
+              <div class="alert alert-info" data-i18n="result_title">
+                <strong>Address:</strong><br>
+                ${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}
+              </div>`;
+            showMapByAddress(`${data.logradouro}, ${data.localidade}, ${data.uf}`);
+          }
+        })
+        .catch(() => {
+          resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="Error_fetch">Error fetching data.</div>`;
+        });
+    }
+
+    function buscarCEPs() {
+      const uf = document.getElementById("ufSelect").value;
+      const city = document.getElementById("citySelect").value;
+      const street = document.getElementById("street").value.trim();
+      const resultDiv = document.getElementById("addressResult");
+      resultDiv.innerHTML = "";
+
+      if (!uf || !city || !street) {
+        resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="fill_all_fields">Fill all fields.</div>`;
+        return;
+      }
+
+      fetch(`https://viacep.com.br/ws/${uf}/${city}/${street}/json/`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data || data.length === 0 || data.erro) {
+            resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="no_results">No results found.</div>`;
+          } else {
+            resultDiv.innerHTML = `
+              <div class="alert alert-info">
+                <ul class="mb-0">
+                  ${data.map(d => `<li>${d.cep} - ${d.logradouro}, ${d.bairro}</li>`).join("")}
+                </ul>
+              </div>`;
+          }
+        });
+    }
+
+    async function loadStates() {
+      const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
+      const estados = await res.json();
+      const uf = document.getElementById('ufSelect');
+      uf.innerHTML = '<option value="">--</option>' +
+        estados.map(e => `<option value="${e.sigla}">${e.nome}</option>`).join('');
+    }
+
+    async function loadCities(sigla) {
+      const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${sigla}/municipios?orderBy=nome`);
+      const cidades = await res.json();
+      const city = document.getElementById('citySelect');
+      city.innerHTML = '<option value="">--</option>' +
+        cidades.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+    }
+
+    document.getElementById('ufSelect').addEventListener('change', e => {
+      const sigla = e.target.value;
+      if (sigla) loadCities(sigla);
+      else document.getElementById('citySelect').innerHTML = '<option value="">--</option>';
+    });
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-bs-theme');
+  html.setAttribute('data-bs-theme', current === 'light' ? 'dark' : 'light');
+});
+    // Carrega estados ao iniciar
+
+    loadStates();
+  </script>
+  <!-- Tradução -->
+  <script>
+    const langData = {
+      en: {
+        title: "🇧🇷 Brazilian Address Finder",
+        desc: "Enter a Brazilian postal code (CEP) or an address to find information.",
+        label_cep: "Postal code (CEP):",
+        btn_cep: "Find Address",
+        label_uf: "State (UF):",
+        label_city: "City:",
+        label_street: "Street:",
+        btn_addr: "Find Postal Codes",
+        result_title: "Address Information",
+        result_cep_title: "Postal codes found",
+        not_found_cep: "Postal code not found.",
+        not_found_addr: "No postal codes found for this address.",
+        toggle: "🌐 Português",
+        video_tutorial: "📺 How to search:",
+        error_fetch: "Error fetching data.",
+        invalid_cep: "Invalid CEP.",
+        fill_all_fields: "Fill all fields.",
+        no_results: "No results found.",
+        dark_mode: "🌓 Dark Mode"
+
+      },
+      pt: {
+        title: "🇧🇷 Buscador de Endereços no Brasil",
+        desc: "Digite um CEP ou endereço brasileiro para encontrar informações.",
+        label_cep: "Código Postal (CEP):",
+        btn_cep: "Buscar Endereço",
+        label_uf: "Estado (UF):",
+        label_city: "Cidade:",
+        label_street: "Rua / Logradouro:",
+        btn_addr: "Buscar CEPs",
+        result_title: "Informações do Endereço",
+        result_cep_title: "CEPs encontrados",
+        not_found_cep: "CEP não encontrado.",
+        not_found_addr: "Nenhum CEP encontrado para este endereço.",
+        toggle: "🌐 English",
+        video_tutorial: "📺 Como buscar:",
+        error_fetch: "Erro ao buscar dados.",
+        invalid_cep: "CEP inválido.",
+        fill_all_fields: "Preencha todos os campos.",
+        no_results: "Nenhum resultado encontrado.",
+        dark_mode: "🌓 Modo Escuro"
+
+      }
+    };
+
+    let currentLang = 'en';
+
+    document.getElementById('langToggle').addEventListener('click', () => {
+      currentLang = currentLang === 'en' ? 'pt' : 'en';
+      const dict = langData[currentLang];
+
+      // Atualiza textos
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key]) el.textContent = dict[key];
+      });
+
+      // Atualiza botão
+      document.getElementById('langToggle').textContent = dict.toggle;
+    });
+  </script>
+</body>
+</html>
