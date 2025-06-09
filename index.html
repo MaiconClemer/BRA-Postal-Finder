@@ -37,7 +37,7 @@
 
     <div class="card mb-4">
       <div class="card-body">
-        <h5 class="card-title" data-i18n="result_cep_title">Postal codes found</h5>
+        <h5 class="card-title" data-i18n="result_cep_title">Postal Codes by Adress</h5>
         <div class="row g-3">
           <div class="col-md-4">
             <label for="ufSelect" class="form-label" data-i18n="label_uf">State (UF):</label>
@@ -73,7 +73,7 @@
       mapDiv.innerHTML = "";
 
       if (cep.length !== 8) {
-        resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="invalid_cep">Invalid CEP.</div>`;
+        resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="invalid_cep">Invalid CEP. / CEP inválido.</div>`;
         return;
       }
 
@@ -81,7 +81,7 @@
         .then(res => res.json())
         .then(data => {
           if (data.erro) {
-            resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="not_found_cep">Postal code not found.</div>`;
+            resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="not_found_cep">Postal code not found. / CEP não encontrado.</div>`;
           } else {
             resultDiv.innerHTML = `
               <div class="alert alert-info" data-i18n="result_title">
@@ -92,7 +92,7 @@
           }
         })
         .catch(() => {
-          resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="Error_fetch">Error fetching data.</div>`;
+          resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="Error_fetch">Error fetching data. / Erro na busca de dados.</div>`;
         });
     }
 
@@ -104,7 +104,7 @@
       resultDiv.innerHTML = "";
 
       if (!uf || !city || !street) {
-        resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="fill_all_fields">Fill all fields.</div>`;
+        resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="fill_all_fields">Fill all fields. / Preencha todos os campos</div>`;
         return;
       }
 
@@ -112,7 +112,7 @@
         .then(res => res.json())
         .then(data => {
           if (!data || data.length === 0 || data.erro) {
-            resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="no_results">No results found.</div>`;
+            resultDiv.innerHTML = `<div class="alert alert-danger" data-i18n="no_results">No results found. / Sem resultados.</div>`;
           } else {
             resultDiv.innerHTML = `
               <div class="alert alert-info">
